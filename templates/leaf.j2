@@ -183,10 +183,7 @@ nv set nve vxlan flooding head-end-replication {{ vtep }}
 nv set nve vxlan flooding enable off
 {% endif %}
 {% else %}
-# Remove any stale head-end-replication IPs discovered on the switch
-for vtep in $(nv config show 2>/dev/null | awk '/head-end-replication:/{f=1;next} f && /[0-9]/{gsub(/[ :{}]/,"");print;next} {f=0}'); do
-  nv unset nve vxlan flooding head-end-replication "$vtep"
-done
+nv unset nve vxlan flooding head-end-replication
 nv set nve vxlan flooding enable off
 {% endif %}
 {% endif %}
