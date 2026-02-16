@@ -173,12 +173,17 @@ nv set nve vxlan mac-learning off
 {% if nve.vxlan.mlag_shared_address %}
 nv set nve vxlan mlag shared-address {{ nve.vxlan.mlag_shared_address }}
 {% endif %}
+{% if nve.vxlan.mac_learning and nve.vxlan.mac_learning == 'true' %}
 {% if nve.vxlan.flooding.enable and nve.vxlan.flooding.enable == 'true' %}
 nv set nve vxlan flooding enable on
 {% for vtep in nve.vxlan.flooding.head_end_replication %}
 nv set nve vxlan flooding head-end-replication {{ vtep }}
 {% endfor %}
 {% else %}
+nv set nve vxlan flooding enable off
+{% endif %}
+{% else %}
+nv unset nve vxlan flooding head-end-replication
 nv set nve vxlan flooding enable off
 {% endif %}
 {% endif %}
