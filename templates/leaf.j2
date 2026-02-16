@@ -3,6 +3,30 @@
 # Generated from Ansible variables
 
 ###############################################################################
+# Cleanup: Discard stale pending config and start from applied state
+###############################################################################
+nv config detach
+
+# Remove existing SVI interfaces (vlanXX) discovered on the switch
+for iface in $(nv show interface -o json 2>/dev/null | awk -F'"' '/"vlan[0-9]+"/{print $2}'); do
+  nv unset interface "$iface"
+done
+
+# Remove existing bond interfaces (bondXX) discovered on the switch
+for iface in $(nv show interface -o json 2>/dev/null | awk -F'"' '/"bond[0-9]+"/{print $2}'); do
+  nv unset interface "$iface"
+done
+
+# Remove all bridge VLANs and VNI mappings
+nv unset bridge domain br_default vlan
+
+# Remove all BGP neighbors (uplink, iBGP, external, EVPN — all rebuilt below)
+nv unset vrf default router bgp neighbor
+
+# Remove all EVPN VNI route target config
+nv unset evpn vni
+
+###############################################################################
 # System Configuration
 ###############################################################################
 nv set system hostname {{ system.hostname }}
