@@ -1,0 +1,49 @@
+---
+- name: Configure Cumulus Linux Leaf Switches
+  hosts: leaf
+  gather_facts: no
+  connection: ansible.netcommon.network_cli
+  
+  vars_files:
+    - "/etc/ansible/configs/{{ inventory_hostname }}.yml"  # Load per-host variables
+  
+  tasks:
+    - name: Generate NVUE configuration from template
+      ansible.builtin.template:
+        src: /etc/ansible/templates/leaf.j2
+        dest: "/tmp/{{ inventory_hostname }}_config.sh"
+      delegate_to: localhost
+      
+    - name: Copy configuration script to switch
+      ansible.builtin.copy:
+        src: "/tmp/{{ inventory_hostname }}_config.sh"
+        dest: "/home/cumulus/config.sh"
+        mode: '0755'
+    
+    - name: Execute NVUE configuration
+      ansible.builtin.shell: |
+        bash /home/cumulus/config.sh
+      register: config_output
+      
+    - name: Display configuration output
+      ansible.builtin.debug:
+        var: config_output.stdout_lines
+        
+    - name: Verify configuration applied
+      ansible.builtin.shell: |
+        nv config show
+      register: verify_output
+      
+    - name: Save configuration output to file
+      ansible.builtin.copy:
+        content: "{{ verify_output.stdout }}"
+        dest: "/tmp/{{ inventory_hostname }}_running_config.txt"
+      delegate_to: localhost
+
+# Alternative task if you want to apply commands directly via SSH
+# without creating an intermediate script file:
+#
+#    - name: Apply NVUE commands directly
+#      ansible.builtin.shell: |
+#        {{ lookup('template', 'cumulus_nvue.j2') }}
+#      register: config_output

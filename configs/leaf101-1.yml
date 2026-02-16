@@ -1,0 +1,140 @@
+---
+# Cumulus Linux Leaf Switch Variables - leaf101-1
+# Example filled in based on your actual configuration
+
+# System Configuration
+system:
+  hostname: "leaf101-1"
+  model: "VX"
+
+# Loopback Configuration
+loopback:
+  # Unique loopback per switch
+  primary_ip: "3.3.3.3"
+  primary_prefix: 32
+  # Shared/anycast loopback for MLAG pair
+  anycast_ip: "10.255.0.1"
+  anycast_prefix: 32
+
+# BGP Configuration
+bgp:
+  asn: "65101"
+  router_id: "3.3.3.3"
+  ipv4_unicast:
+    enable: true
+    ebgp_multipath: 4
+    redistribute_connected: true
+
+# MLAG Configuration
+mlag:
+  enable: true
+  mac_address: "44:38:39:BE:EF:AA"
+  backup_ip: "4.4.4.4"
+  peer_ip: "linklocal"
+  peerlink_members:
+    - "swp31"
+    - "swp32"
+  peerlink_vlan: 4094
+  peerlink_ipv4: "169.254.0.254"
+  peerlink_prefix: 31
+
+# VRR (Virtual Router Redundancy) Configuration
+vrr:
+  enable: true
+
+# NVE/VXLAN Configuration
+nve:
+  vxlan:
+    enable: true
+    arp_nd_suppress: true
+    mac_learning: false
+    source_address: "3.3.3.3"
+    mlag_shared_address: "10.255.0.1"
+    flooding:
+      enable: false
+      head_end_replication: ""  # Remote MLAG pair anycast IP
+
+# VLANs Configuration
+vlans:
+  - id: "10"
+    vni: "10"
+    svi:
+      enable: true
+      ipv4_address: "192.168.10.2"
+      ipv4_prefix: "24"
+      vrr_address: "192.168.10.1"
+      vrr_prefix: "24"
+  - id: "20"
+    vni: "20"
+    svi:
+      enable: true
+      ipv4_address: "192.168.20.2"
+      ipv4_prefix: "24"
+      vrr_address: "192.168.20.1"
+      vrr_prefix: "24"
+  - id: "99"
+    vni: ""  # No VNI for VLAN 99
+    svi:
+      enable: true
+      ipv4_address: "192.168.99.2"
+      ipv4_prefix: "29"
+      vrr_address: "192.168.99.1"
+      vrr_prefix: "29"
+
+# Uplink Interfaces (to spines)
+uplinks:
+  - interface: "swp1"
+    ipv4_address: "10.0.0.1"
+    ipv4_prefix: 31
+    bgp_neighbor: "10.0.0.0"
+    bgp_remote_as: "65501"
+  - interface: "swp2"
+    ipv4_address: "10.0.0.9"
+    ipv4_prefix: 31
+    bgp_neighbor: "10.0.0.8"
+    bgp_remote_as: "65502"
+
+# Access Bonds (MLAG bonds to hosts/servers)
+access_bonds:
+  - name: "bond28"
+    members:
+      - "swp28"
+    mlag_id: "28"
+    access_vlan: "20"
+  - name: "bond29"
+    members:
+      - "swp29"
+    mlag_id: "29"
+    access_vlan: "99"
+  - name: "bond30"
+    members:
+      - "swp30"
+    mlag_id: "30"
+    access_vlan: "10"
+
+# iBGP Peer (MLAG peer for routing synchronization)
+ibgp_peer:
+  neighbor_ip: "169.254.0.255"
+  remote_as: "65101"
+  nexthop_self: true
+
+# External BGP Peers (e.g., border/WAN connections)
+external_bgp_peers:
+  - neighbor_ip: "192.168.99.5"
+    remote_as: "65099"
+
+# EVPN Configuration (if using EVPN)
+evpn:
+  enable: true  # Set to true when enabling EVPN
+  vnis:
+    - vni_id: "10"
+      route_target: "65510:10"
+    - vni_id: "20"
+      route_target: "65520:20"
+  bgp_peers:
+    - neighbor_ip: "1.1.1.1"  # Spine1
+      remote_as: "65501"
+      multihop_ttl: 5
+    - neighbor_ip: "2.2.2.2"  # Spine2
+      remote_as: "65502"
+      multihop_ttl: 5

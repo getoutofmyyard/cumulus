@@ -1,0 +1,189 @@
+#!/bin/bash
+# Cumulus Linux NVUE Configuration Template
+# Generated from Ansible variables
+
+###############################################################################
+# System Configuration
+###############################################################################
+nv set system hostname {{ system.hostname }}
+
+###############################################################################
+# Loopback Configuration
+###############################################################################
+nv set interface lo type loopback
+nv set interface lo ip address {{ loopback.primary_ip }}/{{ loopback.primary_prefix }}
+nv set interface lo ip address {{ loopback.anycast_ip }}/{{ loopback.anycast_prefix }}
+
+###############################################################################
+# BGP Configuration
+###############################################################################
+nv set router bgp enable on
+nv set router bgp autonomous-system {{ bgp.asn }}
+nv set router bgp router-id {{ bgp.router_id }}
+
+nv set vrf default router bgp enable on
+{% if bgp.ipv4_unicast.enable %}
+nv set vrf default router bgp address-family ipv4-unicast enable on
+nv set vrf default router bgp address-family ipv4-unicast multipaths ebgp {{ bgp.ipv4_unicast.ebgp_multipath }}
+{% if bgp.ipv4_unicast.redistribute_connected %}
+nv set vrf default router bgp address-family ipv4-unicast redistribute connected enable on
+{% endif %}
+{% endif %}
+
+###############################################################################
+# Uplink BGP Neighbors (to Spines)
+###############################################################################
+{% for uplink in uplinks %}
+nv set interface {{ uplink.interface }} type swp
+nv set interface {{ uplink.interface }} ip address {{ uplink.ipv4_address }}/{{ uplink.ipv4_prefix }}
+nv set vrf default router bgp neighbor {{ uplink.bgp_neighbor }} remote-as {{ uplink.bgp_remote_as }}
+nv set vrf default router bgp neighbor {{ uplink.bgp_neighbor }} type numbered
+{% endfor %}
+
+###############################################################################
+# iBGP Peer (MLAG Peer)
+###############################################################################
+nv set vrf default router bgp neighbor {{ ibgp_peer.neighbor_ip }} remote-as {{ ibgp_peer.remote_as }}
+nv set vrf default router bgp neighbor {{ ibgp_peer.neighbor_ip }} type numbered
+{% if ibgp_peer.nexthop_self %}
+nv set vrf default router bgp neighbor {{ ibgp_peer.neighbor_ip }} address-family ipv4-unicast nexthop-setting self
+{% endif %}
+
+###############################################################################
+# External BGP Peers
+###############################################################################
+{% for peer in external_bgp_peers %}
+nv set vrf default router bgp neighbor {{ peer.neighbor_ip }} remote-as {{ peer.remote_as }}
+nv set vrf default router bgp neighbor {{ peer.neighbor_ip }} type numbered
+{% endfor %}
+
+###############################################################################
+# MLAG Configuration
+###############################################################################
+{% if mlag.enable %}
+nv set interface peerlink type peerlink
+nv set interface peerlink bond mode lacp
+nv set interface peerlink bond lacp-rate fast
+{% for member in mlag.peerlink_members %}
+nv set interface peerlink bond member {{ member }}
+{% endfor %}
+
+nv set interface peerlink.{{ mlag.peerlink_vlan }} type sub
+nv set interface peerlink.{{ mlag.peerlink_vlan }} base-interface peerlink
+nv set interface peerlink.{{ mlag.peerlink_vlan }} vlan {{ mlag.peerlink_vlan }}
+nv set interface peerlink.{{ mlag.peerlink_vlan }} ip address {{ mlag.peerlink_ipv4 }}/{{ mlag.peerlink_prefix }}
+
+nv set mlag enable on
+nv set mlag mac-address {{ mlag.mac_address }}
+nv set mlag backup {{ mlag.backup_ip }}
+nv set mlag peer-ip {{ mlag.peer_ip }}
+{% endif %}
+
+###############################################################################
+# VRR Configuration
+###############################################################################
+{% if vrr.enable %}
+nv set router vrr enable on
+{% endif %}
+
+###############################################################################
+# Bridge Domain and VLANs
+###############################################################################
+{% for vlan in vlans %}
+nv set bridge domain br_default vlan {{ vlan.id }}
+{% if vlan.vni %}
+nv set bridge domain br_default vlan {{ vlan.id }} vni {{ vlan.vni }}
+{% endif %}
+{% endfor %}
+
+###############################################################################
+# SVI Configuration
+###############################################################################
+{% for vlan in vlans %}
+{% if vlan.svi.enable %}
+nv set interface vlan{{ vlan.id }} type svi
+nv set interface vlan{{ vlan.id }} vlan {{ vlan.id }}
+{% if vlan.svi.ipv4_address %}
+nv set interface vlan{{ vlan.id }} ip address {{ vlan.svi.ipv4_address }}/{{ vlan.svi.ipv4_prefix }}
+{% endif %}
+{% if vlan.svi.vrr_address %}
+nv set interface vlan{{ vlan.id }} ip vrr enable on
+nv set interface vlan{{ vlan.id }} ip vrr address {{ vlan.svi.vrr_address }}/{{ vlan.svi.vrr_prefix }}
+{% endif %}
+{% endif %}
+{% endfor %}
+
+###############################################################################
+# Access Bonds (MLAG Bonds to Hosts)
+###############################################################################
+{% for bond in access_bonds %}
+nv set interface {{ bond.name }} type bond
+nv set interface {{ bond.name }} bond mode lacp
+nv set interface {{ bond.name }} bond lacp-rate fast
+{% if bond.mlag_id %}
+nv set interface {{ bond.name }} bond mlag id {{ bond.mlag_id }}
+nv set interface {{ bond.name }} bond mlag enable on
+{% endif %}
+{% for member in bond.members %}
+nv set interface {{ bond.name }} bond member {{ member }}
+{% endfor %}
+{% if bond.access_vlan %}
+nv set interface {{ bond.name }} bridge domain br_default access {{ bond.access_vlan }}
+{% endif %}
+{% endfor %}
+
+###############################################################################
+# NVE/VXLAN Configuration
+###############################################################################
+{% if nve.vxlan.enable %}
+nv set nve vxlan enable on
+nv set nve vxlan source address {{ nve.vxlan.source_address }}
+{% if nve.vxlan.arp_nd_suppress %}
+nv set nve vxlan arp-nd-suppress on
+{% endif %}
+{% if nve.vxlan.mac_learning and nve.vxlan.mac_learning == 'true' %}
+nv set nve vxlan mac-learning on
+{% else %}
+nv set nve vxlan mac-learning off
+{% endif %}
+{% if nve.vxlan.mlag_shared_address %}
+nv set nve vxlan mlag shared-address {{ nve.vxlan.mlag_shared_address }}
+{% endif %}
+{% if nve.vxlan.flooding.enable and nve.vxlan.flooding.enable == 'true' %}
+nv set nve vxlan flooding enable on
+{% for vtep in nve.vxlan.flooding.head_end_replication %}
+nv set nve vxlan flooding head-end-replication {{ vtep }}
+{% endfor %}
+{% else %}
+nv set nve vxlan flooding enable off
+{% endif %}
+{% endif %}
+
+###############################################################################
+# EVPN Configuration
+###############################################################################
+{% if evpn.enable %}
+nv set evpn enable on
+
+# EVPN VNI Route Targets
+{% for vni in evpn.vnis %}
+nv set evpn vni {{ vni.vni_id }} route-target both {{ vni.route_target }}
+{% endfor %}
+
+# EVPN BGP Peers (Route Reflectors/Spines)
+{% for peer in evpn.bgp_peers %}
+nv set vrf default router bgp neighbor {{ peer.neighbor_ip }} remote-as {{ peer.remote_as }}
+nv set vrf default router bgp neighbor {{ peer.neighbor_ip }} address-family l2vpn-evpn enable on
+{% if peer.multihop_ttl %}
+nv set vrf default router bgp neighbor {{ peer.neighbor_ip }} multihop-ttl {{ peer.multihop_ttl }}
+{% endif %}
+{% endfor %}
+
+# Enable L2VPN EVPN address family
+nv set vrf default router bgp address-family l2vpn-evpn enable on
+{% endif %}
+
+###############################################################################
+# Apply Configuration
+###############################################################################
+nv config apply
