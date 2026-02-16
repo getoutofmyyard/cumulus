@@ -1,0 +1,50 @@
+---
+system:
+  hostname: "spine1"
+  model: "VX"
+
+loopback:
+  primary_ip: "1.1.1.1"
+  primary_mask: "32"
+
+bgp:
+  asn: "65501"
+  router_id: "1.1.1.1"
+  ipv4_unicast:
+    enable: true
+    ebgp_multipath: 4
+    redistribute_connected: true
+
+uplinks:
+  - interface: "swp1"
+    ipv4_address: "10.0.0.0/31"
+    bgp_neighbor: "10.0.0.1"
+    bgp_remote_as: "65101"
+  - interface: "swp2"
+    ipv4_address: "10.0.0.2/31"
+    bgp_neighbor: "10.0.0.3"
+    bgp_remote_as: "65101"
+  - interface: "swp3"
+    ipv4_address: "10.0.0.4/31"
+    bgp_neighbor: "10.0.0.5"
+    bgp_remote_as: "65102"
+  - interface: "swp4"
+    ipv4_address: "10.0.0.6/31"
+    bgp_neighbor: "10.0.0.7"
+    bgp_remote_as: "65102"
+
+evpn:
+  enable: true
+  bgp_peers:
+    - neighbor_ip: "3.3.3.3"  # leaf101-1
+      remote_as: "65101"
+      multihop_ttl: 5
+    - neighbor_ip: "4.4.4.4"  # leaf101-2
+      remote_as: "65101"
+      multihop_ttl: 5
+    - neighbor_ip: "5.5.5.5"  # leaf102-1
+      remote_as: "65102"
+      multihop_ttl: 5
+    - neighbor_ip: "6.6.6.6"  # leaf102-2
+      remote_as: "65102"
+      multihop_ttl: 5

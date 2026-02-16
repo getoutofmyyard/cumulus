@@ -4,10 +4,19 @@ leaf101-2
 leaf102-1
 leaf102-2
 
-[leaf:vars]
+[spine]
+spine1
+spine2
+
+[switches:children]
+leaf
+spine
+
+[switches:vars]
 ansible_user=cumulus
 ansible_become=yes
 ansible_become_method=sudo
-ansible_become_password={{ vault_ansible_become_password}}
+ansible_become_password={{ vault_ansible_become_password }}
 ansible_connection=ssh
 ansible_network_os=cumulus
+

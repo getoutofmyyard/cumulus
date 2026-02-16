@@ -1,0 +1,75 @@
+#!/bin/bash
+# Cumulus Linux NVUE Configuration Template
+# Generated from Ansible variables
+
+###############################################################################
+# Cleanup: Discard stale pending config and start from applied state
+###############################################################################
+nv config detach
+
+# Remove all BGP neighbors (uplink, iBGP, external, EVPN — all rebuilt below)
+nv unset vrf default router bgp neighbor
+
+###############################################################################
+# System Configuration
+###############################################################################
+nv set system hostname {{ system.hostname }}
+
+###############################################################################
+# Loopback Configuration
+###############################################################################
+nv set interface lo type loopback
+nv set interface lo ip address {{ loopback.primary_ip }}/{{ loopback.primary_mask }}
+
+###############################################################################
+# BGP Configuration
+###############################################################################
+nv set router bgp enable on
+nv set router bgp autonomous-system {{ bgp.asn }}
+nv set router bgp router-id {{ bgp.router_id }}
+
+nv set vrf default router bgp enable on
+{% if bgp.ipv4_unicast.enable %}
+nv set vrf default router bgp address-family ipv4-unicast enable on
+nv set vrf default router bgp address-family ipv4-unicast multipaths ebgp {{ bgp.ipv4_unicast.ebgp_multipath }}
+{% if bgp.ipv4_unicast.redistribute_connected %}
+nv set vrf default router bgp address-family ipv4-unicast redistribute connected enable on
+{% endif %}
+{% endif %}
+
+###############################################################################
+# Uplink BGP Neighbors (to Spines)
+###############################################################################
+{% for uplink in uplinks %}
+nv set interface {{ uplink.interface }} type swp
+nv set interface {{ uplink.interface }} ip address {{ uplink.ipv4_address }}
+nv set vrf default router bgp neighbor {{ uplink.bgp_neighbor }} remote-as {{ uplink.bgp_remote_as }}
+nv set vrf default router bgp neighbor {{ uplink.bgp_neighbor }} type numbered
+{% endfor %}
+
+
+###############################################################################
+# EVPN Configuration
+###############################################################################
+{% if evpn.enable %}
+nv set evpn enable on
+
+# EVPN BGP Peers
+{% for peer in evpn.bgp_peers %}
+nv set vrf default router bgp neighbor {{ peer.neighbor_ip }} remote-as {{ peer.remote_as }}
+nv set vrf default router bgp neighbor {{ peer.neighbor_ip }} address-family l2vpn-evpn enable on
+nv set vrf default router bgp neighbor {{ peer.neighbor_ip }} address-family l2vpn-evpn route-reflector-client on
+nv set vrf default router bgp neighbor {{ peer.neighbor_ip }} update-source {{ loopback.primary_ip }}
+{% if peer.multihop_ttl %}
+nv set vrf default router bgp neighbor {{ peer.neighbor_ip }} multihop-ttl {{ peer.multihop_ttl }}
+{% endif %}
+{% endfor %}
+
+# Enable L2VPN EVPN address family
+nv set vrf default router bgp address-family l2vpn-evpn enable on
+{% endif %}
+
+###############################################################################
+# Apply Configuration
+###############################################################################
+echo "y" | nv config apply

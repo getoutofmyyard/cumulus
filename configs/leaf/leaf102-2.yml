@@ -10,11 +10,9 @@ system:
 # Loopback Configuration
 loopback:
   # Unique loopback per switch
-  primary_ip: "6.6.6.6"
-  primary_prefix: 32
+  primary_ip: "6.6.6.6/32"
   # Shared/anycast loopback for MLAG pair
-  anycast_ip: "10.255.0.2"
-  anycast_prefix: 32
+  anycast_ip: "10.255.0.2/32"
 
 # BGP Configuration
 bgp:
@@ -35,8 +33,7 @@ mlag:
     - "swp31"
     - "swp32"
   peerlink_vlan: 4094
-  peerlink_ipv4: "169.254.0.255"
-  peerlink_prefix: 31
+  peerlink_ipv4: "169.254.0.255/31"
 
 # VRR (Virtual Router Redundancy) Configuration
 vrr:
@@ -60,34 +57,33 @@ vlans:
     vni: "10"
     svi:
       enable: true
-      ipv4_address: "192.168.10.5"
-      ipv4_prefix: "24"
-      vrr_address: "192.168.10.1"
-      vrr_prefix: "24"
+      ipv4_address: "192.168.10.5/24"
+      vrr_address: "192.168.10.1/24"
   - id: "20"
     vni: "20"
     svi:
       enable: true
-      ipv4_address: "192.168.20.5"
-      ipv4_prefix: "24"
-      vrr_address: "192.168.20.1"
-      vrr_prefix: "24"
+      ipv4_address: "192.168.20.5/24"
+      vrr_address: "192.168.20.1/24"
 
 # Uplink Interfaces (to spines)
 uplinks:
   - interface: "swp1"
-    ipv4_address: "10.0.0.7"
-    ipv4_prefix: 31
+    ipv4_address: "10.0.0.7/31"
     bgp_neighbor: "10.0.0.6"
     bgp_remote_as: "65501"
   - interface: "swp2"
-    ipv4_address: "10.0.0.15"
-    ipv4_prefix: 31
+    ipv4_address: "10.0.0.15/31"
     bgp_neighbor: "10.0.0.14"
     bgp_remote_as: "65502"
 
 # Access Bonds (MLAG bonds to hosts/servers)
 access_bonds:
+  - name: "bond29"
+    members:
+      - "swp29"
+    mlag_id: "29"
+    access_vlan: "20"
   - name: "bond30"
     members:
       - "swp30"

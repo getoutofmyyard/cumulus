@@ -1,16 +1,16 @@
 ---
-- name: Configure Cumulus Linux Leaf Switches
-  hosts: leaf
+- name: Configure Cumulus Linux Spine Switches
+  hosts: spine
   gather_facts: no
   connection: ansible.netcommon.network_cli
   
   vars_files:
-    - "/etc/ansible/configs/leaf/{{ inventory_hostname }}.yml"  # Load per-host variables
+    - "/etc/ansible/configs/spine/{{ inventory_hostname }}.yml"  # Load per-host variables
   
   tasks:
     - name: Generate NVUE configuration from template
       ansible.builtin.template:
-        src: /etc/ansible/templates/leaf.j2
+        src: /etc/ansible/templates/spine.j2
         dest: "/tmp/{{ inventory_hostname }}_config.sh"
       delegate_to: localhost
       
@@ -39,11 +39,3 @@
         content: "{{ verify_output.stdout }}"
         dest: "/tmp/{{ inventory_hostname }}_running_config.txt"
       delegate_to: localhost
-
-# Alternative task if you want to apply commands directly via SSH
-# without creating an intermediate script file:
-#
-#    - name: Apply NVUE commands directly
-#      ansible.builtin.shell: |
-#        {{ lookup('template', 'cumulus_nvue.j2') }}
-#      register: config_output

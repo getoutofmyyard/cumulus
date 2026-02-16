@@ -35,8 +35,8 @@ nv set system hostname {{ system.hostname }}
 # Loopback Configuration
 ###############################################################################
 nv set interface lo type loopback
-nv set interface lo ip address {{ loopback.primary_ip }}/{{ loopback.primary_prefix }}
-nv set interface lo ip address {{ loopback.anycast_ip }}/{{ loopback.anycast_prefix }}
+nv set interface lo ip address {{ loopback.primary_ip }}
+nv set interface lo ip address {{ loopback.anycast_ip }}
 
 ###############################################################################
 # BGP Configuration
@@ -59,7 +59,7 @@ nv set vrf default router bgp address-family ipv4-unicast redistribute connected
 ###############################################################################
 {% for uplink in uplinks %}
 nv set interface {{ uplink.interface }} type swp
-nv set interface {{ uplink.interface }} ip address {{ uplink.ipv4_address }}/{{ uplink.ipv4_prefix }}
+nv set interface {{ uplink.interface }} ip address {{ uplink.ipv4_address }}
 nv set vrf default router bgp neighbor {{ uplink.bgp_neighbor }} remote-as {{ uplink.bgp_remote_as }}
 nv set vrf default router bgp neighbor {{ uplink.bgp_neighbor }} type numbered
 {% endfor %}
@@ -95,7 +95,7 @@ nv set interface peerlink bond member {{ member }}
 nv set interface peerlink.{{ mlag.peerlink_vlan }} type sub
 nv set interface peerlink.{{ mlag.peerlink_vlan }} base-interface peerlink
 nv set interface peerlink.{{ mlag.peerlink_vlan }} vlan {{ mlag.peerlink_vlan }}
-nv set interface peerlink.{{ mlag.peerlink_vlan }} ip address {{ mlag.peerlink_ipv4 }}/{{ mlag.peerlink_prefix }}
+nv set interface peerlink.{{ mlag.peerlink_vlan }} ip address {{ mlag.peerlink_ipv4 }}
 
 nv set mlag enable on
 nv set mlag mac-address {{ mlag.mac_address }}
@@ -128,11 +128,11 @@ nv set bridge domain br_default vlan {{ vlan.id }} vni {{ vlan.vni }}
 nv set interface vlan{{ vlan.id }} type svi
 nv set interface vlan{{ vlan.id }} vlan {{ vlan.id }}
 {% if vlan.svi.ipv4_address %}
-nv set interface vlan{{ vlan.id }} ip address {{ vlan.svi.ipv4_address }}/{{ vlan.svi.ipv4_prefix }}
+nv set interface vlan{{ vlan.id }} ip address {{ vlan.svi.ipv4_address }}
 {% endif %}
 {% if vlan.svi.vrr_address %}
 nv set interface vlan{{ vlan.id }} ip vrr enable on
-nv set interface vlan{{ vlan.id }} ip vrr address {{ vlan.svi.vrr_address }}/{{ vlan.svi.vrr_prefix }}
+nv set interface vlan{{ vlan.id }} ip vrr address {{ vlan.svi.vrr_address }}
 {% endif %}
 {% endif %}
 {% endfor %}
@@ -180,11 +180,10 @@ nv set nve vxlan flooding enable on
 nv set nve vxlan flooding head-end-replication {{ vtep }}
 {% endfor %}
 {% else %}
-nv set nve vxlan flooding enable off
+nv unset nve vxlan flooding
 {% endif %}
 {% else %}
-nv unset nve vxlan flooding head-end-replication
-nv set nve vxlan flooding enable off
+nv unset nve vxlan flooding
 {% endif %}
 {% endif %}
 
